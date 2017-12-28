@@ -99,52 +99,81 @@ public class Alto3ResultHandler implements ResultHandler {
             // Needed for addint the TAGREFS attribute to the ALTO_string.
             Element domElement = TextElementsExtractor.findAltoElementByStringID(altoDocument, wordid);
 
-            if ((this.prevIsNamed) && (this.prevType.equals(label))) {
-                // This is a continuation of a label, eg. J.A de Vries..
-                // prevIsNamed indicates that the previous word was also a NE
-                // Concatenation string to generate one label.
+            String alreadyAddedTagId = null;
 
-                if (!word.equalsIgnoreCase(this.prevWord.trim())) {
-                    // Don't double label names on a hypened word.
-                    word = this.prevWord + word;
+            //Goes through Entity_list (namedentitytag list). This sets alreadyAddedTagId to domElement's TAGREFS attribute value,
+            // if there is already tag defined, that has same label and word defined.
+            for(int i = 0; i < this.Entity_list.size(); i++){
+
+                HashMap entity = this.Entity_list.get(i);
+
+                String labelOld = (String)entity.get("label");
+                String wordOld = (String)entity.get("word");
+
+                if (labelOld.equals(label) && wordOld.equals(word)){
+                    alreadyAddedTagId = (String)entity.get("id");
+                    domElement.setAttribute("TAGREFS", "Tag" + alreadyAddedTagId);
+
+                    this.prevWord = word + " ";
+                    this.prevType = label;
+                    break;
                 }
 
-                this.Entity_list.remove(this.Entity_list.size()-1);
-                this.prevWord = word + " ";
-                this.prevType = label;
+            }
 
-                // Add the TAGREFS attribute to the corresponding String in the alto.
-                if (this.tagCounter > 0) {
-                    // Prevent negative tag numbers :)
-                    domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter - 1));
-                    mMap.put("id", String.valueOf(this.tagCounter - 1));
+            //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
+            //going to be added to the list. 
+            if (alreadyAddedTagId == null){
+
+                if ((this.prevIsNamed) && (this.prevType.equals(label))) {
+                    // This is a continuation of a label, eg. J.A de Vries..
+                    // prevIsNamed indicates that the previous word was also a NE
+                    // Concatenation string to generate one label.
+
+                    if (!word.equalsIgnoreCase(this.prevWord.trim())) {
+                        // Don't double label names on a hypened word.
+                        word = this.prevWord + word;
+                    }
+
+                    this.Entity_list.remove(this.Entity_list.size()-1);
+                    this.prevWord = word + " ";
+                    this.prevType = label;
+
+                    // Add the TAGREFS attribute to the corresponding String in the alto.
+                    if (this.tagCounter > 0) {
+                        // Prevent negative tag numbers :)
+                        domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter - 1));
+                        mMap.put("id", String.valueOf(this.tagCounter - 1));
+                    } else {
+                        domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter));
+                        mMap.put("id", String.valueOf(this.tagCounter));
+                    }
+
+                    // Create mapping for the TAGS header part of alto3
+                    mMap.put("label", label);
+                    mMap.put("word", word);
+
+                    // Add tagref mapping to the list.
+                    this.Entity_list.add(mMap);
                 } else {
+                    // Add the TAGREFS attribute to the corresponding String in the alto.
                     domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter));
+
+                    // Create mapping for the TAGS header part of alto3
                     mMap.put("id", String.valueOf(this.tagCounter));
+                    mMap.put("label", label);
+                    mMap.put("word", word);
+
+                    // Add tagref mapping to the list.
+                    this.Entity_list.add(mMap);
+                    this.tagCounter += 1;
+                    this.prevWord = word + " ";
+                    this.prevType = label;
                 }
-
-                // Create mapping for the TAGS header part of alto3
-                mMap.put("label", label);
-                mMap.put("word", word);
-
-                // Add tagref mapping to the list.
-                this.Entity_list.add(mMap);
-            } else {
-                // Add the TAGREFS attribute to the corresponding String in the alto.
-                domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter));
-
-                // Create mapping for the TAGS header part of alto3
-                mMap.put("id", String.valueOf(this.tagCounter));
-                mMap.put("label", label);
-                mMap.put("word", word);
-
-                // Add tagref mapping to the list.
-                this.Entity_list.add(mMap);
-                this.tagCounter += 1;
-                this.prevWord = word + " ";
-                this.prevType = label;
             }
             this.prevIsNamed = true;
+
+        
         } else {
             this.prevIsNamed = false;
         }
