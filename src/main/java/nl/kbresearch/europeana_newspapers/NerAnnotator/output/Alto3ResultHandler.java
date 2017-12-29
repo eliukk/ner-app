@@ -1,24 +1,24 @@
-package nl.kbresearch.europeana_newspapers.NerAnnotator.output;
+package nl.kbresearch.europeana_newspapers.NerAnnotator.output; 
 
-import nl.kbresearch.europeana_newspapers.NerAnnotator.TextElementsExtractor;
-import nl.kbresearch.europeana_newspapers.NerAnnotator.container.ContainerContext;
+import nl.kbresearch.europeana_newspapers.NerAnnotator.TextElementsExtractor; 
+import nl.kbresearch.europeana_newspapers.NerAnnotator.container.ContainerContext; 
 
-import java.io.*;
+import java.io.*; 
 
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
+import java.text.SimpleDateFormat; 
+import java.util.ArrayList; 
+import java.util.Calendar; 
+import java.util.HashMap; 
+import java.util.List; 
 
-import javax.xml.transform.*;
-import javax.xml.transform.dom.*;
-import javax.xml.transform.stream.*;
+import javax.xml.transform.*; 
+import javax.xml.transform.dom.*; 
+import javax.xml.transform.stream.*; 
 
-import org.w3c.dom.Comment;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.Comment; 
+import org.w3c.dom.Document; 
+import org.w3c.dom.Element; 
+import org.w3c.dom.NodeList; 
 
 /**
  * @author Willem Jan Faber
@@ -27,31 +27,34 @@ import org.w3c.dom.NodeList;
 
 public class Alto3ResultHandler implements ResultHandler {
 
-    private ContainerContext context;
-    private String name;
-    private PrintWriter outputFile;
-    private Document altoDocument;
-    private String versionString;
-    private List<HashMap> Entity_list = new ArrayList();
+    private ContainerContext context; 
+    private String name; 
+    private PrintWriter outputFile; 
+    private Document altoDocument; 
+    private String versionString; 
+    private List<HashMap> Entity_list = new ArrayList(); 
 
-    String continuationId = null;
-    String continuationLabel = null;
+    String continuationId = null; 
+    String continuationLabel = null; 
 
-    String prevWord = "";
-    String prevType = "";
+    String prevWord = ""; 
+    String prevType = ""; 
+    String prevWordid = ""; 
+    String alreadyAddedTagId = ""; 
+    ArrayList <String> prevWordIds = new ArrayList <String>(); 
 
-    boolean prevIsNamed = false;
+    boolean prevIsNamed = false; 
 
-    int tagCounter = 0;
+    int tagCounter = 0; 
 
     /**
      * @param context
      * @param name
      */
     public Alto3ResultHandler(final ContainerContext context, final String name, final String versionString) {
-        this.context = context;
-        this.name = name;
-        this.versionString = versionString;
+        this.context = context; 
+        this.name = name; 
+        this.versionString = versionString; 
     }
 
     @Override
@@ -68,76 +71,58 @@ public class Alto3ResultHandler implements ResultHandler {
 
     @Override
     public void addToken(String wordid, String originalContent, String word, String label, String continuationid) {
-        HashMap mMap = new HashMap();
+        HashMap mMap = new HashMap(); 
 
         // try to find out if this is a continuation of the previous word
         if (continuationid != null) {
-            this.continuationId = continuationid;
-            this.continuationLabel = label;
+            this.continuationId = continuationid; 
+            this.continuationLabel = label; 
         }
 
         if (wordid.equals(this.continuationId)) {
-            label = this.continuationLabel;
+            label = this.continuationLabel; 
         }
 
         if (label != null) {
             // Reformat the label to a more readable form.
             if ((label.equals("B-LOC")) || (label.equals("I-LOC"))) {
-                label = "LOC";
+                label = "LOC"; 
             }
             if ((label.equals("B-PER")) || (label.equals("I-PER"))) {
-                label = "PER";
+                label = "PER"; 
             }
             if ((label.equals("B-ORG") || (label.equals("I-ORG")))) {
-                label = "ORG";
+                label = "ORG"; 
             }
             if ((label.equals("B-MISC") || (label.equals("I-MISC")))) {
-                label = "MISC";
+                label = "MISC"; 
             }
 
             // Find the alto node with the corresponding wordid.
             // Needed for addint the TAGREFS attribute to the ALTO_string.
-            Element domElement = TextElementsExtractor.findAltoElementByStringID(altoDocument, wordid);
+            Element domElement = TextElementsExtractor.findAltoElementByStringID(altoDocument, wordid); 
 
-            String alreadyAddedTagId = null;
+            if ((this.prevIsNamed) && (this.prevType.equals(label))) {
+                // This is a continuation of a label, eg. J.A de Vries..
+                // prevIsNamed indicates that the previous word was also a NE
+                // Concatenation string to generate one label.
 
-            //Goes through Entity_list (namedentitytag list). This sets alreadyAddedTagId to domElement's TAGREFS attribute value,
-            // if there is already tag defined, that has same label and word defined.
-            for(int i = 0; i < this.Entity_list.size(); i++){
-
-                HashMap entity = this.Entity_list.get(i);
-
-                String labelOld = (String)entity.get("label");
-                String wordOld = (String)entity.get("word");
-
-                if (labelOld.equals(label) && wordOld.equals(word)){
-                    alreadyAddedTagId = (String)entity.get("id");
-                    domElement.setAttribute("TAGREFS", "Tag" + alreadyAddedTagId);
-
-                    this.prevWord = word + " ";
-                    this.prevType = label;
-                    break;
+                if ( ! word.equalsIgnoreCase(this.prevWord.trim())) {
+                    // Don't double label names on a hypened word.
+                    word = this.prevWord + word;
                 }
 
-            }
+                prevWordIds.add(this.prevWordid);
 
-            //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
-            //going to be added to the list. 
-            if (alreadyAddedTagId == null){
+                this.prevWord = word + " ";
+                this.prevType = label;
+                this.prevWordid = wordid;
 
-                if ((this.prevIsNamed) && (this.prevType.equals(label))) {
-                    // This is a continuation of a label, eg. J.A de Vries..
-                    // prevIsNamed indicates that the previous word was also a NE
-                    // Concatenation string to generate one label.
+                this.Entity_list.remove(this.Entity_list.size()-1);
 
-                    if (!word.equalsIgnoreCase(this.prevWord.trim())) {
-                        // Don't double label names on a hypened word.
-                        word = this.prevWord + word;
-                    }
-
-                    this.Entity_list.remove(this.Entity_list.size()-1);
-                    this.prevWord = word + " ";
-                    this.prevType = label;
+                //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
+                //going to be added to the list. 
+                if (!tagAlreadyExists(label, word, domElement)){
 
                     // Add the TAGREFS attribute to the corresponding String in the alto.
                     if (this.tagCounter > 0) {
@@ -155,27 +140,74 @@ public class Alto3ResultHandler implements ResultHandler {
 
                     // Add tagref mapping to the list.
                     this.Entity_list.add(mMap);
-                } else {
-                    // Add the TAGREFS attribute to the corresponding String in the alto.
-                    domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter));
 
-                    // Create mapping for the TAGS header part of alto3
-                    mMap.put("id", String.valueOf(this.tagCounter));
-                    mMap.put("label", label);
-                    mMap.put("word", word);
+                    prevWordIds.clear();
+                }
+                else{
+                    //Updates earlier words tagrefs to match current alreadyAddedTagid, because this was a continuation of a label
+                    //and there was already a tag for these worlds. Also sets tagCounter to correct number.
 
-                    // Add tagref mapping to the list.
-                    this.Entity_list.add(mMap);
-                    this.tagCounter += 1;
+                    this.tagCounter -=prevWordIds.size();
+                    updateTAGREFS(prevWordIds);
+                    prevWordIds.clear();
+                }
+            } else {
+                    //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
+                    //going to be added to the list. 
+                    if (!tagAlreadyExists(label, word, domElement)){
+                        // Add the TAGREFS attribute to the corresponding String in the alto.
+                        domElement.setAttribute("TAGREFS", "Tag" + String.valueOf(this.tagCounter));
+
+                        // Create mapping for the TAGS header part of alto3
+                        mMap.put("id", String.valueOf(this.tagCounter));
+                        mMap.put("label", label);
+                        mMap.put("word", word);
+
+                        // Add tagref mapping to the list.
+                        this.Entity_list.add(mMap);
+                        this.tagCounter += 1;
+                    }
                     this.prevWord = word + " ";
                     this.prevType = label;
+                    this.prevWordid = wordid;
                 }
-            }
             this.prevIsNamed = true;
 
         
         } else {
             this.prevIsNamed = false;
+        }
+    }
+
+    //Goes through Entity_list (namedentitytag list). This sets alreadyAddedTagId to domElement's TAGREFS attribute value,
+    // if there is already tag defined, that has same label and word defined.
+    private boolean tagAlreadyExists(String label, String word, Element domElement) {
+
+        for (int i = 0; i < this.Entity_list.size(); i++) {
+
+            HashMap entity = this.Entity_list.get(i); 
+
+            String labelOld = (String)entity.get("label"); 
+            String wordOld = (String)entity.get("word"); 
+
+
+            if (labelOld.equals(label) && wordOld.equals(word)) {
+
+                this.alreadyAddedTagId = (String)entity.get("id"); 
+                domElement.setAttribute("TAGREFS", "Tag" + alreadyAddedTagId); 
+
+                return true; 
+            }
+        }
+
+        return false; 
+    }
+
+    private void updateTAGREFS(ArrayList < String > wordids) {
+
+        for (int i = 0; i < wordids.size(); i++) {
+            Element domElement = TextElementsExtractor.findAltoElementByStringID(this.altoDocument, wordids.get(i)); 
+            domElement.setAttribute("TAGREFS", "Tag" + this.alreadyAddedTagId); 
         }
     }
 
