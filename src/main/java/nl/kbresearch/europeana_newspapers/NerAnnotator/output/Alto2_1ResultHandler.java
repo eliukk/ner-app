@@ -100,7 +100,7 @@ public class Alto2_1ResultHandler implements ResultHandler {
 
             // Find the alto node with the corresponding wordid.
             // Needed for addint the TAGREFS attribute to the ALTO_string.
-            Element domElement = TextElementsExtractor.findAltoElementByStringID(altoDocument, wordid);
+            Element domElement = TextElementsExtractor.findAltoElementByStringID(altoDocument, wordid); 
 
             if ((this.prevIsNamed) && (this.prevType.equals(label))) {
                 // This is a continuation of a label, eg. J.A de Vries..
@@ -121,7 +121,7 @@ public class Alto2_1ResultHandler implements ResultHandler {
                 this.Entity_list.remove(this.Entity_list.size()-1);
 
                 //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
-                //going to be added to the list.
+                //going to be added to the list. 
                 if (!tagAlreadyExists(label, word, domElement)){
 
                     // Add the TAGREFS attribute to the corresponding String in the alto.
@@ -140,18 +140,18 @@ public class Alto2_1ResultHandler implements ResultHandler {
 
                     // Add tagref mapping to the list.
                     this.Entity_list.add(mMap);
-
-                    prevWordIds.clear();
                 }
                 else{
                     //Updates earlier words tagrefs to match current alreadyAddedTagid, because this was a continuation of a label
                     //and there was already a tag for these worlds. Also sets tagCounter to correct number.
 
-                    this.tagCounter -=prevWordIds.size();
+                    this.tagCounter -=1;
                     updateTAGREFS(prevWordIds);
-                    prevWordIds.clear();
                 }
             } else {
+
+                    prevWordIds.clear();
+
                     //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
                     //going to be added to the list. 
                     if (!tagAlreadyExists(label, word, domElement)){
@@ -192,7 +192,7 @@ public class Alto2_1ResultHandler implements ResultHandler {
 
 
             if (labelOld.equals(label) && wordOld.equals(word)) {
- 
+
                 this.alreadyAddedTagId = (String)entity.get("id"); 
                 domElement.setAttribute("TAGREFS", "Tag" + alreadyAddedTagId); 
 
@@ -203,7 +203,7 @@ public class Alto2_1ResultHandler implements ResultHandler {
         return false; 
     }
 
-    private void updateTAGREFS(ArrayList < String > wordids) {
+    private void updateTAGREFS(ArrayList <String> wordids) {
 
         for (int i = 0; i < wordids.size(); i++) {
             Element domElement = TextElementsExtractor.findAltoElementByStringID(this.altoDocument, wordids.get(i)); 

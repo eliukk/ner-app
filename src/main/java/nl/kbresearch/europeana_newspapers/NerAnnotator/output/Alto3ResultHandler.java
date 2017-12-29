@@ -140,18 +140,18 @@ public class Alto3ResultHandler implements ResultHandler {
 
                     // Add tagref mapping to the list.
                     this.Entity_list.add(mMap);
-
-                    prevWordIds.clear();
                 }
                 else{
                     //Updates earlier words tagrefs to match current alreadyAddedTagid, because this was a continuation of a label
                     //and there was already a tag for these worlds. Also sets tagCounter to correct number.
 
-                    this.tagCounter -=prevWordIds.size();
+                    this.tagCounter -=1;
                     updateTAGREFS(prevWordIds);
-                    prevWordIds.clear();
                 }
             } else {
+
+                    prevWordIds.clear();
+
                     //If there is not tag with same label and word already added to Entity_list (namedentitytag list), then it is
                     //going to be added to the list. 
                     if (!tagAlreadyExists(label, word, domElement)){
@@ -203,7 +203,7 @@ public class Alto3ResultHandler implements ResultHandler {
         return false; 
     }
 
-    private void updateTAGREFS(ArrayList < String > wordids) {
+    private void updateTAGREFS(ArrayList <String> wordids) {
 
         for (int i = 0; i < wordids.size(); i++) {
             Element domElement = TextElementsExtractor.findAltoElementByStringID(this.altoDocument, wordids.get(i)); 
